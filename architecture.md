@@ -26,7 +26,7 @@ graph TD
         
         N_Router -->|Policy / Product Query| N_KB[kb_retriever_node]
         N_Router -->|Qualification / General| N_LLM[llm_generate_node]
-        N_Router -->|Escalation / Frustration (if ENABLE_HITL=true)| N_HITL[hitl_node]
+        N_Router -->|"Escalation / Frustration (if ENABLE_HITL=true)"| N_HITL[hitl_node]
         N_InGW -->|Malicious Input Blocked| S_END((END))
 
         N_KB --> N_LLM
@@ -99,7 +99,7 @@ stateDiagram-v2
 
     intent_router --> kb_retriever: Policy / Product Query
     intent_router --> llm_generate: Standard Qualification Flow
-    intent_router --> hitl_node: Human Requested / Frustration Peak (if ENABLE_HITL=true)
+    intent_router --> hitl_node: Human Requested (if HITL Enabled)
 
     kb_retriever --> llm_generate: Context & Citations Appended
     llm_generate --> output_guardrail: Draft Response Generated
