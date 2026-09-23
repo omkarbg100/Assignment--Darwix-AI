@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+*.env.local
+*.env.production
+
+# ChromaDB (local vector store — do not commit)
+q2-knowledge-base/chroma_db/
+
+# CRM output files (contain mock lead data — keep local)
+**/crm_leads.json
+**/callbacks.json
+
+# Audio files (call recordings — keep local, do not commit)
+*.wav
+*.mp3
+*.ogg
+*.m4a
+recordings/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (if any frontend tooling added later)
+node_modules/
+.npm
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+*.tmp
+test_call_audio.wav

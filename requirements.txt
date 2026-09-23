@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production Requirements — Enterprise AI Engineer Assessment
+# Install with: uv pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── LangChain & LangGraph State Machine ──────────────────────────────────────
+langchain>=1.4.0
+langchain-core>=1.6.0
+langgraph>=1.2.0
+langchain-google-genai>=4.4.0
+langchain-groq>=1.1.0
+google-genai>=2.20.0
+
+# ── Q2: Production Knowledge Base & Embeddings ───────────────────────────────
+chromadb>=1.5.0
+sentence-transformers>=3.0.0
+numpy>=1.26.0
+
+# ── API & Pipeline Server ───────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.0.0
+httpx>=0.27.0
+python-dotenv>=1.0.1
+websockets>=12.0
+
+# ── Q1 & Q3: Local Voice Engine (Offline STT/TTS) ───────────────────────────
+sounddevice>=0.4.6
+SpeechRecognition>=3.10.0

@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ShieldCare — AI Voice Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:      #111214;
+    --surface: #18191c;
+    --border:  #2a2b2e;
+    --accent:  #5b5fc7;
+    --green:   #3fb950;
+    --yellow:  #d29922;
+    --red:     #f85149;
+    --text:    #e6edf3;
+    --sub:     #7d8590;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .logo-sub { font-size: 12px; color: var(--sub); font-weight: 400; margin-left: 4px; }
+
+  .header-tabs { display: flex; gap: 2px; }
+  .tab-btn {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    color: var(--sub);
+    transition: color 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { background: rgba(255,255,255,0.07); color: var(--text); }
+
+  .header-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub); }
+  .status-dot.live { background: var(--green); }
+
+  /* ── MAIN ── */
+  main { flex: 1; display: flex; overflow: hidden; }
+  .view { display: none; width: 100%; }
+  .view.active { display: flex; }
+
+  /* ── VOICE AGENT VIEW ── */
+  #view-agent { flex-direction: column; align-items: center; overflow: hidden; }
+
+  .agent-chat-container {
+    flex: 1;
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px;
+    overflow: hidden;
+  }
+
+  /* Agent selector */
+  .agent-selector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 0 16px;
+    flex-shrink: 0;
+  }
+  .selector-label { font-size: 11px; color: var(--sub); text-transform: uppercase; letter-spacing: 0.08em; }
+  .agent-cards { display: flex; gap: 8px; }
+  .agent-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    min-width: 100px;
+    user-select: none;
+  }
+  .agent-card:hover { border-color: var(--sub); }
+  .agent-card.selected { border-color: var(--accent); background: rgba(91,95,199,0.08); }
+  .agent-card-emoji { font-size: 22px; }
+  .agent-card-name { font-size: 13px; font-weight: 600; }
+  .agent-card-lang { font-size: 11px; color: var(--sub); }
+
+  /* Active call header */
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0 12px;
+    flex-shrink: 0;
+  }
+  .avatar-wrap { flex-shrink: 0; }
+  .avatar-ring {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .avatar-ring.speaking { border-color: var(--accent); }
+  .avatar-ring.listening { border-color: var(--green); }
+  .agent-info { flex: 1; }
+  .agent-name { font-size: 15px; font-weight: 600; }
+  .agent-status-text { font-size: 12px; color: var(--sub); margin-top: 2px; }
+  #status-label { color: var(--accent); }
+  .call-timer { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; display: none; }
+  .call-timer.visible { display: block; }
+
+  /* Chat */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .msg-row { display: flex; gap: 8px; }
+  .msg-row.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0; margin-top: 3px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .msg-bubble {
+    max-width: 72%;
+    padding: 9px 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .msg-row.user .msg-bubble { background: rgba(91,95,199,0.12); border-color: rgba(91,95,199,0.25); }
+
+  /* Typing dots */
+  .typing-indicator {
+    display: none; gap: 4px;
+    padding: 10px 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: fit-content;
+  }
+  .typing-indicator.visible { display: flex; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub); animation: bounce 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  /* Mic bar */
+  .mic-bar {
+    flex-shrink: 0;
+    padding: 12px 0 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 700px;
+  }
+  .interim-text { font-size: 12px; color: var(--sub); min-height: 16px; text-align: center; }
+  .interim-text.active { color: var(--text); }
+  .mic-controls { display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; }
+
+  .text-input-wrap {
+    display: flex; align-items: center; gap: 6px;
+    flex: 1; max-width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+  .text-input-wrap input {
+    flex: 1; background: transparent; border: none;
+    color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+  }
+  .text-input-wrap input::placeholder { color: var(--sub); }
+  .text-input-wrap button {
+    background: transparent; border: none; color: var(--sub); cursor: pointer; font-size: 16px;
+  }
+  .text-input-wrap button:hover { color: var(--text); }
+
+  #btn-call {
+    padding: 9px 24px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    background: var(--surface); color: var(--text);
+    transition: border-color 0.15s; font-family: inherit;
+  }
+  #btn-call:hover { border-color: var(--sub); }
+  #btn-call.active { border-color: var(--red); color: var(--red); }
+
+  .mic-btn-wrap { position: relative; }
+  #btn-mic {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--sub); font-size: 18px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #btn-mic.visible { display: flex; }
+  #btn-mic:hover { border-color: var(--sub); color: var(--text); }
+  #btn-mic.listening { border-color: var(--green); color: var(--green); }
+  #btn-mic.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+  .mic-hint { font-size: 11px; color: var(--sub); text-align: center; }
+
+  /* ── LIVE INSIGHTS VIEW ── */
+  #view-insights { flex-direction: column; overflow: hidden; }
+  .insights-layout { flex: 1; display: flex; overflow: hidden; }
+  .transcript-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+
+  .panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .panel-title { font-size: 12px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.06em; }
+  .panel-count { font-size: 12px; color: var(--sub); }
+
+  .transcript-list {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .transcript-item { display: flex; flex-direction: column; gap: 3px; }
+  .transcript-speaker { font-size: 11px; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: 0.05em; }
+  .transcript-item.AGENT .transcript-speaker { color: var(--accent); }
+  .transcript-item.CUSTOMER .transcript-speaker { color: var(--green); }
+  .transcript-text {
+    font-size: 13px; color: var(--text); line-height: 1.5;
+    padding: 7px 10px; background: var(--surface);
+    border-radius: 6px; border-left: 2px solid var(--border);
+  }
+  .transcript-item.AGENT .transcript-text { border-left-color: var(--accent); }
+  .transcript-item.CUSTOMER .transcript-text { border-left-color: var(--green); }
+
+  .nudges-panel { width: 320px; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .nudge-list {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .nudge-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    border-left: 3px solid var(--sub);
+  }
+  .nudge-card.high { border-left-color: var(--red); }
+  .nudge-card.medium { border-left-color: var(--yellow); }
+  .nudge-card.low { border-left-color: var(--green); }
+  .nudge-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .nudge-type { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub); }
+  .nudge-card.high .nudge-type { color: var(--red); }
+  .nudge-card.medium .nudge-type { color: var(--yellow); }
+  .nudge-card.low .nudge-type { color: var(--green); }
+  .nudge-priority {
+    font-size: 10px; padding: 1px 7px; border-radius: 4px;
+    font-weight: 600; text-transform: uppercase; background: rgba(255,255,255,0.06); color: var(--sub);
+  }
+  .nudge-text { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; line-height: 1.4; }
+  .nudge-evidence { font-size: 11px; color: var(--sub); font-style: italic; line-height: 1.4; margin-bottom: 8px; }
+  .nudge-confidence { display: flex; align-items: center; gap: 6px; }
+  .conf-bar { flex: 1; height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .conf-fill { height: 100%; background: var(--sub); }
+  .nudge-card.high .conf-fill { background: var(--red); }
+  .nudge-card.medium .conf-fill { background: var(--yellow); }
+  .nudge-card.low .conf-fill { background: var(--green); }
+  .conf-label { font-size: 11px; color: var(--sub); }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex; gap: 20px; padding: 8px 16px;
+    border-top: 1px solid var(--border); flex-shrink: 0; font-size: 12px;
+  }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label { color: var(--sub); text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+  .stat-val { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* Empty state */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 8px; height: 100%;
+    color: var(--sub); padding: 40px; text-align: center;
+  }
+  .empty-icon { font-size: 28px; opacity: 0.4; }
+  .empty-text { font-size: 13px; line-height: 1.6; max-width: 220px; }
+
+  /* ── CRM LEADS VIEW ── */
+  #view-leads { flex-direction: column; overflow: hidden; }
+  .leads-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+  .leads-title { font-size: 14px; font-weight: 600; }
+  .leads-meta { font-size: 12px; color: var(--sub); margin-top: 2px; }
+  .leads-actions { display: flex; gap: 8px; }
+  .leads-btn {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px;
+    font-weight: 500; cursor: pointer; transition: border-color 0.15s; font-family: inherit;
+  }
+  .leads-btn:hover { border-color: var(--sub); }
+  .leads-btn.refresh { border-color: var(--accent); color: var(--accent); }
+
+  .leads-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+    padding: 12px 20px; flex-shrink: 0;
+  }
+  .lead-stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .lead-stat-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: 0.06em; }
+  .lead-stat-val { font-size: 20px; font-weight: 600; color: var(--text); }
+  .lead-stat-sub { font-size: 11px; color: var(--sub); }
+
+  .leads-table-wrap {
+    flex: 1; overflow-y: auto; padding: 0 20px 20px;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .leads-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  .leads-table th {
+    position: sticky; top: 0; background: var(--bg);
+    padding: 8px 12px; text-align: left;
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--sub); border-bottom: 1px solid var(--border); z-index: 5;
+  }
+  .leads-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+  .leads-table tbody tr:hover { background: var(--surface); }
+  .lead-name { font-weight: 500; }
+  .lead-id { font-size: 10px; color: var(--sub); font-family: monospace; margin-top: 2px; }
+  .lead-badge {
+    display: inline-block; padding: 1px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 500; background: rgba(255,255,255,0.06); color: var(--sub);
+  }
+  .badge-qualified { color: var(--green); }
+  .badge-unqualified { color: var(--red); }
+  .badge-plan-gold { color: var(--yellow); }
+  .badge-plan-platinum { color: var(--accent); }
+  .lead-notes { font-size: 12px; color: var(--sub); max-width: 240px; line-height: 1.4; }
+
+  /* ── SUPERVISOR HITL VIEW ── */
+  #view-hitl { flex-direction: column; overflow: hidden; }
+  .hitl-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+  .hitl-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .hitl-container { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .hitl-card {
+    background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--yellow);
+    border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .hitl-card.escalated { border-left-color: var(--red); }
+  .hitl-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .hitl-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 4px; background: rgba(248,81,73,0.15); color: var(--red);
+  }
+  .hitl-reason { font-size: 13px; font-weight: 600; color: #fff; margin-top: 4px; }
+  .hitl-meta { font-size: 11px; color: var(--sub); }
+  .hitl-dialog-box {
+    background: rgba(0,0,0,0.25); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; font-size: 12px; line-height: 1.5; color: #cbd5e1; max-height: 120px; overflow-y: auto;
+  }
+  .hitl-suggested { font-size: 12px; color: #94a3b8; background: rgba(91,95,199,0.08); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(91,95,199,0.2); }
+  .hitl-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hitl-btn {
+    padding: 7px 16px; border-radius: 6px; border: none; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.15s; font-family: inherit;
+  }
+  .hitl-btn.approve { background: var(--green); color: #fff; }
+  .hitl-btn.override { background: var(--accent); color: #fff; }
+  .hitl-btn.transfer { background: var(--red); color: #fff; }
+  .hitl-btn:hover { opacity: 0.85; }
+
+  /* ── TELEMETRY & GUARDRAILS VIEW ── */
+  #view-telemetry { flex-direction: column; overflow-y: auto; padding: 20px; gap: 20px; }
+  .telemetry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .telemetry-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .telemetry-val { font-size: 24px; font-weight: 700; color: var(--accent2); font-variant-numeric: tabular-nums; }
+  .telemetry-label { font-size: 11px; text-transform: uppercase; color: var(--sub); letter-spacing: 0.05em; }
+  .guardrail-panel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .guardrail-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .guardrail-tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(63,185,80,0.15); color: var(--green); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    🛡️ ShieldCare AI 
+    <span class="logo-sub">Voice Intelligence Platform</span>
+  </div>
+
+  <div class="header-tabs">
+    <button class="tab-btn active" onclick="switchTab('agent')" id="tab-agent">🎙️ Voice Agent</button>
+    <button class="tab-btn" onclick="switchTab('insights')" id="tab-insights">⚡ Live Insights</button>
+    <button class="tab-btn" onclick="switchTab('hitl'); loadHITL();" id="tab-hitl">🧑‍💼 Supervisor HITL <span id="hitl-badge" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:600;">0</span></button>
+    <button class="tab-btn" onclick="switchTab('telemetry'); loadTelemetry();" id="tab-telemetry">📊 Guardrails & Latency</button>
+    <button class="tab-btn" onclick="switchTab('leads'); loadLeads();" id="tab-leads">👥 CRM Leads</button>
+  </div>
+
+  <div class="header-status">
+    <div class="status-dot" id="conn-dot"></div>
+    <span id="conn-label">Connecting...</span>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main>
+
+  <!-- ── VOICE AGENT VIEW ── -->
+  <div class="view active" id="view-agent">
+    <div class="agent-chat-container">
+
+      <!-- Agent selector (shown before call) -->
+      <div class="agent-selector" id="agent-selector">
+        <div class="selector-label">Choose your agent to begin</div>
+        <div class="agent-cards">
+          <div class="agent-card selected" id="card-aria" onclick="selectAgent('aria')">
+            <div class="agent-card-emoji">🤖</div>
+            <div class="agent-card-name">Aria</div>
+            <div class="agent-card-lang">English · Health Insurance</div>
+          </div>
+          <div class="agent-card" id="card-maya" onclick="selectAgent('maya')">
+            <div class="agent-card-emoji">🌺</div>
+            <div class="agent-card-name">Maya</div>
+            <div class="agent-card-lang">Taglish · Life Insurance</div>
+          </div>
+          <div class="agent-card" id="card-dewi" onclick="selectAgent('dewi')">
+            <div class="agent-card-emoji">🌸</div>
+            <div class="agent-card-name">Dewi</div>
+            <div class="agent-card-lang">Bahasa · Multifinance</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic agent avatar & status (shown after call starts) -->
+      <div class="agent-header" id="agent-header" style="display:none;">
+        <div class="avatar-wrap">
+          <div class="avatar-ring" id="avatar-ring">🤖</div>
+        </div>
+        <div class="agent-info">
+          <div class="agent-name" id="agent-display-name">Aria</div>
+          <div class="agent-status-text">ShieldCare AI Agent · <span id="status-label">Connecting...</span></div>
+        </div>
+        <div class="call-timer" id="call-timer">00:00</div>
+      </div>
+
+      <!-- Chat messages -->
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <!-- Typing indicator -->
+      <div class="msg-row aria" id="typing-row" style="display:none; padding:4px 0 8px;">
+        <div class="msg-avatar" id="typing-avatar">🤖</div>
+        <div class="typing-indicator visible">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mic control bar -->
+    <div class="mic-bar">
+      <div class="interim-text" id="interim-text">Select an agent above, then click Start Call</div>
+      <div class="mic-controls">
+        <button id="btn-call" onclick="toggleCall()">📞 Start Call</button>
+        <div class="mic-btn-wrap">
+          <button id="btn-mic" onclick="toggleMic()" title="Tap to speak">🎙️</button>
+        </div>
+        <div class="text-input-wrap" id="text-input-wrap" style="display:none;">
+          <input type="text" id="chat-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)" />
+          <button onclick="sendText()">➤</button>
+        </div>
+      </div>
+      <div class="mic-hint" id="mic-hint">Choose an agent, then click Start Call. Use Chrome/Edge for voice.</div>
+    </div>
+  </div>
+
+  <!-- ── LIVE INSIGHTS VIEW ── -->
+  <div class="view" id="view-insights">
+    <div class="insights-layout">
+
+      <!-- Transcript panel -->
+      <div class="transcript-panel">
+        <div class="panel-header">
+          <span class="panel-title">📝 Live Transcript</span>
+          <span class="panel-count" id="utt-count">0 utterances</span>
+        </div>
+        <div class="transcript-list" id="transcript-list">
+          <div class="empty-state">
+            <div class="empty-icon">💬</div>
+            <div class="empty-text">Transcript will appear here when a call is active.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nudges panel -->
+      <div class="nudges-panel">
+        <div class="panel-header">
+          <span class="panel-title">⚡ Live Nudges</span>
+          <span class="panel-count" id="nudge-count">0 nudges</span>
+        </div>
+        <div class="nudge-list" id="nudge-list">
+          <div class="empty-state">
+            <div class="empty-icon">🔔</div>
+            <div class="empty-text">AI nudges will appear here as signals are detected during the call.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat">
+        <span class="stat-label">Nudges</span>
+        <span class="stat-val" id="stat-nudges">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">P50 E2E</span>
+        <span class="stat-val" id="stat-p50">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">P95 E2E</span>
+        <span class="stat-val" id="stat-p95">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">High Priority</span>
+        <span class="stat-val" id="stat-high">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Status</span>
+        <span class="stat-val" id="stat-status" style="color:var(--muted)">Idle</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CRM LEADS VIEW ── -->
+  <div class="view" id="view-leads">
+
+    <div class="leads-header">
+      <div>
+        <div class="leads-title">👥 CRM Lead Management</div>
+        <div class="leads-meta" id="leads-meta">Loading leads...</div>
+      </div>
+      <div class="leads-actions">
+        <button class="leads-btn" onclick="exportLeads()">⬇️ Export CSV</button>
+        <button class="leads-btn refresh" onclick="loadLeads()">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="leads-stats">
+      <div class="lead-stat-card">
+        <span class="lead-stat-label">Total Leads</span>
+        <span class="lead-stat-val" id="ls-total">—</span>
+        <span class="lead-stat-sub">all conversations</span>
+      </div>
+      <div class="lead-stat-card">
+        <span class="lead-stat-label">Qualified</span>
+        <span class="lead-stat-val" id="ls-qualified" style="color:var(--green)">—</span>
+        <span class="lead-stat-sub">eligible for plans</span>
+      </div>
+      <div class="lead-stat-card">
+        <span class="lead-stat-label">Callbacks</span>
+        <span class="lead-stat-val" id="ls-callbacks" style="color:var(--yellow)">—</span>
+        <span class="lead-stat-sub">scheduled follow-ups</span>
+      </div>
+      <div class="lead-stat-card">
+        <span class="lead-stat-label">Top Plan</span>
+        <span class="lead-stat-val" id="ls-top-plan" style="font-size:18px;color:var(--accent2)">—</span>
+        <span class="lead-stat-sub">most recommended</span>
+      </div>
+    </div>
+
+    <!-- Leads table -->
+    <div class="leads-table-wrap" id="leads-table-wrap">
+      <div class="empty-state" id="leads-empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">No leads saved yet. Start a call with Aria to create your first lead!</div>
+      </div>
+      <table class="leads-table" id="leads-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Name / Lead ID</th>
+            <th>Age</th>
+            <th>City</th>
+            <th>Coverage</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Notes</th>
+            <th>Saved At</th>
+          </tr>
+        </thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+    </div>
+
+  <!-- ── SUPERVISOR HITL VIEW ── -->
+  <div class="view" id="view-hitl">
+    <div class="hitl-header">
+      <div>
+        <div class="hitl-title">🧑‍💼 Supervisor Human-in-the-Loop Control Hub</div>
+        <div class="leads-meta" id="hitl-meta">Real-time escalation queue for customer frustration, underwriting exceptions, and human agent requests.</div>
+      </div>
+      <button class="leads-btn refresh" onclick="loadHITL()">🔄 Refresh Queue</button>
+    </div>
+    <div class="hitl-container" id="hitl-container">
+      <div class="empty-state" id="hitl-empty">
+        <div class="empty-icon">🟢</div>
+        <div class="empty-text">No active escalations. The AI voice agent is handling all customer queries within safe guardrail thresholds.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TELEMETRY & GUARDRAILS VIEW ── -->
+  <div class="view" id="view-telemetry">
+    <div class="hitl-header">
+      <div>
+        <div class="hitl-title">📊 Operational Telemetry & Safety Guardrails</div>
+        <div class="leads-meta">Live measurement of latency budgets, grounding scores, and compliance controls.</div>
+      </div>
+      <button class="leads-btn refresh" onclick="loadTelemetry()">🔄 Refresh Metrics</button>
+    </div>
+    <div class="telemetry-grid">
+      <div class="telemetry-card">
+        <span class="telemetry-label">End-to-End Latency (P50)</span>
+        <span class="telemetry-val" id="tel-p50">—</span>
+        <span class="lead-stat-sub">Target: &lt; 2000ms</span>
+      </div>
+      <div class="telemetry-card">
+        <span class="telemetry-label">End-to-End Latency (P95)</span>
+        <span class="telemetry-val" id="tel-p95" style="color:var(--yellow)">—</span>
+        <span class="lead-stat-sub">Target: &lt; 3500ms</span>
+      </div>
+      <div class="telemetry-card">
+        <span class="telemetry-label">LLM Generation (P50)</span>
+        <span class="telemetry-val" id="tel-llm-p50">—</span>
+        <span class="lead-stat-sub">Gemini 2.0 Flash / Groq</span>
+      </div>
+      <div class="telemetry-card">
+        <span class="telemetry-label">Total Processed Turns</span>
+        <span class="telemetry-val" id="tel-turns" style="color:var(--green)">—</span>
+        <span class="lead-stat-sub">Conversational turns logged</span>
+      </div>
+    </div>
+
+    <div class="guardrail-panel">
+      <div class="leads-title">🛡️ Active Production Guardrails</div>
+      <div class="guardrail-item">
+        <div>
+          <strong>Input PII Redaction & Sanitization</strong>
+          <div class="lead-notes">Regex & semantic filters for PAN cards, Aadhaar, phone numbers, and email addresses.</div>
+        </div>
+        <span class="guardrail-tag">ACTIVE (ENFORCED)</span>
+      </div>
+      <div class="guardrail-item">
+        <div>
+          <strong>Prompt Injection & Jailbreak Defense</strong>
+          <div class="lead-notes">Blocks system prompt leakage attempts, developer mode overrides, and off-topic domain queries.</div>
+        </div>
+        <span class="guardrail-tag">ACTIVE (ENFORCED)</span>
+      </div>
+      <div class="guardrail-item">
+        <div>
+          <strong>Factual Grounding & Hallucination Check</strong>
+          <div class="lead-notes">Cross-verifies policy coverage assertions against retrieved Q2 ChromaDB knowledge chunks.</div>
+        </div>
+        <span class="guardrail-tag">ACTIVE (ENFORCED)</span>
+      </div>
+      <div class="guardrail-item">
+        <div>
+          <strong>Regulatory Compliance Disclosures (IRDAI / OJK)</strong>
+          <div class="lead-notes">Automatically appends required waiting period and underwriting terms on quotation turns.</div>
+        </div>
+        <span class="guardrail-tag">ACTIVE (ENFORCED)</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── CRM Leads ─────────────────────────────────────────────────────────────────
+let leadsData = [];
+let callbacksData = [];
+
+async function loadLeads() {
+  document.getElementById('leads-meta').textContent = 'Loading...';
+  try {
+    const res = await fetch('/api/leads');
+    const data = await res.json();
+    leadsData = data.leads || [];
+    callbacksData = data.callbacks || [];
+    renderLeads();
+  } catch(e) {
+    document.getElementById('leads-meta').textContent = 'Error loading leads — is the server running?';
+  }
+}
+
+function renderLeads() {
+  const total = leadsData.length;
+  const qualified = leadsData.filter(l => l.qualified).length;
+  const plans = {};
+  leadsData.forEach(l => {
+    if (l.qualified && l.recommended_plan) {
+      plans[l.recommended_plan] = (plans[l.recommended_plan] || 0) + 1;
+    }
+  });
+  const topPlan = Object.entries(plans).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
+
+  document.getElementById('ls-total').textContent = total;
+  document.getElementById('ls-qualified').textContent = qualified;
+  document.getElementById('ls-callbacks').textContent = callbacksData.length;
+  document.getElementById('ls-top-plan').textContent = topPlan;
+  document.getElementById('leads-meta').textContent =
+    `${total} lead${total !== 1 ? 's' : ''} · Last refreshed ${new Date().toLocaleTimeString()}`;
+
+  const tbody = document.getElementById('leads-tbody');
+  tbody.innerHTML = '';
+
+  if (total === 0) {
+    document.getElementById('leads-empty').style.display = 'flex';
+    document.getElementById('leads-table').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('leads-empty').style.display = 'none';
+  document.getElementById('leads-table').style.display = 'table';
+
+  // Newest first
+  const sorted = [...leadsData].reverse();
+  sorted.forEach(lead => {
+    const isQ = lead.qualified;
+    const plan = lead.recommended_plan || '—';
+    const planClass = plan === 'Gold' ? 'badge-plan-gold' : plan === 'Platinum' ? 'badge-plan-platinum' : 'badge-plan-silver';
+    const savedAt = lead.created_at ? new Date(lead.created_at).toLocaleString() : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="lead-name">${escHtml(lead.name || '—')}</div>
+        <div class="lead-id">${escHtml(lead.lead_id || '')}</div>
+      </td>
+      <td>${lead.age || '—'}</td>
+      <td>${escHtml(lead.city || '—')}</td>
+      <td>${escHtml(lead.coverage_type || '—')}</td>
+      <td><span class="lead-badge ${planClass}">${escHtml(plan)}</span></td>
+      <td><span class="lead-badge ${isQ ? 'badge-qualified' : 'badge-unqualified'}">${isQ ? '✅ Qualified' : '❌ No'}</span></td>
+      <td><div class="lead-notes">${escHtml(lead.notes || lead.sum_insured_preference || '—')}</div></td>
+      <td style="font-size:12px;color:var(--muted);white-space:nowrap">${savedAt}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function exportLeads() {
+  if (!leadsData.length) { alert('No leads to export yet.'); return; }
+  const headers = ['lead_id','name','age','city','coverage_type','sum_insured_preference','recommended_plan','qualified','notes','created_at'];
+  const rows = leadsData.map(l => headers.map(h => `"${String(l[h]||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `crm_leads_${Date.now()}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── Human-in-the-Loop (HITL) Logic ──────────────────────────────────────────
+let hitlPendingCount = 0;
+
+function updateHITLBadge() {
+  const badge = document.getElementById('hitl-badge');
+  if (badge) {
+    badge.textContent = hitlPendingCount;
+    badge.style.display = hitlPendingCount > 0 ? 'inline-block' : 'none';
+  }
+}
+
+async function loadHITL() {
+  const container = document.getElementById('hitl-container');
+  try {
+    const res = await fetch('/api/hitl/pending');
+    const data = await res.json();
+    renderHITL(data.pending || []);
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-text">Error loading queue. Is server running?</div></div>';
+  }
+}
+
+function renderHITL(items) {
+  const container = document.getElementById('hitl-container');
+  hitlPendingCount = items.length;
+  updateHITLBadge();
+
+  if (!items.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🟢</div>
+        <div class="empty-text">No active escalations. The AI voice agent is handling calls smoothly within guardrail boundaries.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = '';
+  items.forEach(req => {
+    const card = document.createElement('div');
+    card.className = 'hitl-card ' + (req.status === 'escalated' ? 'escalated' : '');
+    card.id = 'hitl-req-' + req.request_id;
+
+    const snippetText = (req.transcript_snippet || []).map(s => `<strong>${escHtml(s.role)}:</strong> ${escHtml(s.content)}`).join('<br>');
+
+    card.innerHTML = `
+      <div class="hitl-card-top">
+        <div>
+          <span class="hitl-badge">${escHtml(req.status)}</span>
+          <div class="hitl-reason">⚠️ ${escHtml(req.reason)}</div>
+          <div class="hitl-meta">Call ID: ${escHtml(req.call_id)} · Agent: ${escHtml(req.agent_name)} · Escalated: ${new Date(req.created_at).toLocaleTimeString()}</div>
+        </div>
+      </div>
+      <div class="hitl-dialog-box">${snippetText || '<em>No prior transcript</em>'}</div>
+      <div class="hitl-suggested"><strong>Suggested AI Action:</strong> ${escHtml(req.suggested_action || 'Transfer to supervisor')}</div>
+      <div class="hitl-actions">
+        <button class="hitl-btn approve" onclick="submitHITL('${req.request_id}', 'approve')">✅ Approve AI Action</button>
+        <button class="hitl-btn override" onclick="promptOverride('${req.request_id}')">✏️ Override with Message</button>
+        <button class="hitl-btn transfer" onclick="submitHITL('${req.request_id}', 'transfer')">📞 Take Over Call</button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function promptOverride(reqId) {
+  const overrideText = prompt('Enter custom message to speak/send to customer:');
+  if (overrideText && overrideText.trim()) {
+    submitHITL(reqId, 'override', overrideText.trim());
+  }
+}
+
+async function submitHITL(reqId, action, resolutionText = null) {
+  try {
+    const res = await fetch('/api/hitl/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id: reqId,
+        action: action,
+        resolution_text: resolutionText,
+      }),
+    });
+    if (res.ok) {
+      loadHITL();
+    }
+  } catch(e) {
+    alert('Failed to resolve escalation: ' + e);
+  }
+}
+
+// ── Telemetry & Latency Logic ────────────────────────────────────────────────
+async function loadTelemetry() {
+  try {
+    const res = await fetch('/api/telemetry');
+    const data = await res.json();
+    document.getElementById('tel-p50').textContent = (data.e2e_p50_ms || 0) + 'ms';
+    document.getElementById('tel-p95').textContent = (data.e2e_p95_ms || 0) + 'ms';
+    document.getElementById('tel-llm-p50').textContent = (data.llm_p50_ms || 0) + 'ms';
+    document.getElementById('tel-turns').textContent = data.total_turns || 0;
+  } catch(e) {
+    console.warn('Could not fetch telemetry stats:', e);
+  }
+}
+
+// ── WebSocket connections ──────────────────────────────────────────────────────
+let dashWs = null;
+let voiceWs = null;
+let callId = null;
+let callActive = false;
+let timerInterval = null;
+let callStartTime = null;
+
+// Counters
+let uttCount = 0;
+let nudgeCount = 0;
+let highCount = 0;
+let e2eValues = [];
+
+function connectDashboard() {
+  const url = `ws://${location.host}/ws/dashboard`;
+  dashWs = new WebSocket(url);
+
+  dashWs.onopen = () => {
+    setConnected(true);
+    loadHITL();
+  };
+
+  dashWs.onclose = () => {
+    setConnected(false);
+    setTimeout(connectDashboard, 2000); // auto-reconnect
+  };
+
+  dashWs.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleDashboardMessage(msg);
+  };
+}
+
+function setConnected(yes) {
+  document.getElementById('conn-dot').className = 'status-dot' + (yes ? ' live' : '');
+  document.getElementById('conn-label').textContent = yes ? 'Connected' : 'Reconnecting...';
+}
+
+function handleDashboardMessage(msg) {
+  if (msg.event === 'hitl_queued' || msg.type === 'hitl_alert') {
+    hitlPendingCount++;
+    updateHITLBadge();
+    loadHITL();
+  } else if (msg.event === 'hitl_resolved') {
+    hitlPendingCount = Math.max(0, hitlPendingCount - 1);
+    updateHITLBadge();
+    loadHITL();
+  } else if (msg.event === 'initial_hitl') {
+    hitlPendingCount = (msg.data || []).length;
+    updateHITLBadge();
+    renderHITL(msg.data || []);
+  } else if (msg.type === 'transcript') {
+    addTranscriptItem(msg.speaker, msg.text);
+  } else if (msg.type === 'nudge') {
+    addNudge(msg);
+  } else if (msg.type === 'call_started') {
+    document.getElementById('stat-status').textContent = 'Live';
+    document.getElementById('stat-status').style.color = 'var(--green)';
+  } else if (msg.type === 'call_ended') {
+    document.getElementById('stat-status').textContent = 'Ended (' + (msg.duration_s || 0) + 's)';
+    document.getElementById('stat-status').style.color = 'var(--muted)';
+  }
+}
+
+// ── VOICE AGENT ────────────────────────────────────────────────────────────────
+
+// Agent config
+const AGENTS = {
+  aria: { name: 'Aria', emoji: '🤖', lang: 'en-IN', company: 'ShieldCare AI Agent' },
+  maya: { name: 'Maya', emoji: '🌺', lang: 'fil-PH', company: 'SunLife Assurance' },
+  dewi: { name: 'Dewi', emoji: '🌸', lang: 'id-ID', company: 'ArthaPrime Multifinance' },
+};
+let selectedAgent = 'aria';
+
+function selectAgent(key) {
+  selectedAgent = key;
+  // Update card selection
+  ['aria','maya','dewi'].forEach(k => {
+    document.getElementById('card-'+k).classList.toggle('selected', k === key);
+  });
+}
+
+function toggleCall() {
+  if (callActive) {
+    endCall();
+  } else {
+    startCall();
+  }
+}
+
+function startCall() {
+  const agentCfg = AGENTS[selectedAgent];
+
+  // Generate call ID
+  callId = 'web-' + Date.now();
+  callActive = true;
+
+  // Show agent header, hide selector
+  document.getElementById('agent-selector').style.display = 'none';
+  document.getElementById('agent-header').style.display = 'flex';
+  document.getElementById('avatar-ring').textContent = agentCfg.emoji;
+  document.getElementById('agent-display-name').textContent = agentCfg.name;
+  document.getElementById('status-label').textContent = 'Connecting...';
+
+  // Clear chat
+  document.getElementById('chat-messages').innerHTML = '';
+
+  // Update UI
+  document.getElementById('btn-call').textContent = '📵 End Call';
+  document.getElementById('btn-call').classList.add('active');
+  document.getElementById('btn-mic').classList.add('visible');
+  document.getElementById('text-input-wrap').style.display = 'flex';
+  document.getElementById('mic-hint').textContent = 'Tap the mic to speak, or type your message.';
+  document.getElementById('interim-text').textContent = 'Connecting...';
+
+  // Start timer
+  callStartTime = Date.now();
+  document.getElementById('call-timer').classList.add('visible');
+  timerInterval = setInterval(updateTimer, 1000);
+
+  // Set STT language
+  if (recognition) recognition.lang = agentCfg.lang;
+
+  // Connect voice agent WebSocket with agent param
+  const url = `ws://${location.host}/ws/voice_agent/${callId}?agent=${selectedAgent}`;
+  voiceWs = new WebSocket(url);
+
+  voiceWs.onopen = () => {
+    document.getElementById('status-label').textContent = `${agentCfg.name} is thinking...`;
+    setTyping(true);
+  };
+
+  voiceWs.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'agent') {
+      setTyping(false);
+      addMessage('agent', msg.text, msg.emoji || agentCfg.emoji);
+      speak(msg.text, agentCfg.lang);
+      document.getElementById('status-label').textContent = `${agentCfg.name} is speaking`;
+    }
+  };
+
+  voiceWs.onclose = () => {
+    if (callActive) endCall();
+  };
+}
+
+function endCall() {
+  const agentCfg = AGENTS[selectedAgent];
+  callActive = false;
+  if (voiceWs) {
+    try { voiceWs.send(JSON.stringify({type: 'end'})); } catch(e) {}
+    voiceWs.close();
+    voiceWs = null;
+  }
+  stopListening();
+  window.speechSynthesis.cancel();
+
+  document.getElementById('btn-call').textContent = '📞 Start Call';
+  document.getElementById('btn-call').classList.remove('active');
+  document.getElementById('btn-mic').classList.remove('visible');
+  document.getElementById('text-input-wrap').style.display = 'none';
+  document.getElementById('status-label').textContent = 'Call ended';
+  document.getElementById('call-timer').classList.remove('visible');
+  setTyping(false);
+  clearInterval(timerInterval);
+
+  // Show agent selector again
+  document.getElementById('agent-selector').style.display = 'flex';
+  document.getElementById('agent-header').style.display = 'none';
+  document.getElementById('interim-text').textContent = 'Select an agent above, then click Start Call';
+
+  addMessage('agent', `Thank you for calling! Have a great day! 👋`, agentCfg.emoji);
+}
+
+function updateTimer() {
+  const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2, '0');
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('call-timer').textContent = m + ':' + s;
+}
+
+function addMessage(role, text, emoji) {
+  const container = document.getElementById('chat-messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (role === 'agent' ? 'aria' : 'user');
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'agent' ? (emoji || AGENTS[selectedAgent].emoji) : '🧑';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text;
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+
+  if (role === 'agent') {
+    setAvatarState('speaking');
+    // update typing avatar emoji too
+    document.getElementById('typing-avatar').textContent = emoji || AGENTS[selectedAgent].emoji;
+  }
+}
+
+function setTyping(on) {
+  document.getElementById('typing-row').style.display = on ? 'flex' : 'none';
+  if (on) {
+    document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+  }
+}
+
+function setAvatarState(state) {
+  const ring = document.getElementById('avatar-ring');
+  ring.className = 'avatar-ring' + (state ? ' ' + state : '');
+}
+
+// ── TTS (browser built-in) ─────────────────────────────────────────────────────
+function speak(text, lang) {
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1.0;
+  utter.pitch = 1.05;
+  utter.volume = 1.0;
+  if (lang) utter.lang = lang;
+
+  // Prefer a female voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const femaleVoice = voices.find(v =>
+    v.name.includes('Female') || v.name.includes('Zira') ||
+    v.name.includes('Samantha') || v.name.includes('Google UK English Female')
+  );
+  if (femaleVoice && !lang || lang === 'en-IN') utter.voice = femaleVoice;
+
+  utter.onstart = () => {
+    setAvatarState('speaking');
+    document.getElementById('status-label').textContent = AGENTS[selectedAgent].name + ' is speaking...';
+    document.getElementById('btn-mic').classList.add('disabled');
+  };
+  utter.onend = () => {
+    setAvatarState('');
+    if (callActive) {
+      document.getElementById('status-label').textContent = 'Your turn — press mic to speak';
+      document.getElementById('btn-mic').classList.remove('disabled');
+      document.getElementById('interim-text').textContent = 'Tap mic to respond';
+    }
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+// ── STT (Web Speech API) ───────────────────────────────────────────────────────
+let recognition = null;
+let isListening = false;
+
+function setupRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('mic-hint').textContent = '⚠️ Web Speech API not supported. Use Chrome or Edge.';
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = AGENTS[selectedAgent].lang;  // set dynamically at call start too
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  let currentInterim = '';
+
+  recognition.onresult = (event) => {
+    let interim = '', final = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) final += t;
+      else interim += t;
+    }
+
+    if (interim) {
+      document.getElementById('interim-text').textContent = interim;
+      document.getElementById('interim-text').classList.add('active');
+      currentInterim = interim;
+    }
+    
+    if (final && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+      document.getElementById('interim-text').textContent = '';
+      document.getElementById('interim-text').classList.remove('active');
+      currentInterim = '';
+      addMessage('user', final.trim());
+      voiceWs.send(JSON.stringify({type: 'user', text: final.trim()}));
+      setTyping(true);
+      document.getElementById('status-label').textContent = 'Aria is thinking...';
+      stopListening();
+    }
+  };
+
+  recognition.onerror = (e) => {
+    console.warn('STT error:', e.error);
+    stopListening();
+    if (e.error === 'not-allowed') {
+      document.getElementById('interim-text').innerHTML = '⚠️ <strong>Microphone Blocked.</strong> Please allow mic access in your browser settings, or just type your message!';
+      document.getElementById('interim-text').classList.add('active');
+    } else if (e.error !== 'no-speech') {
+      document.getElementById('interim-text').textContent = 'Mic error: ' + e.error + ' (You can also type your message)';
+    }
+  };
+
+  recognition.onend = () => {
+    if (currentInterim && voiceWs && voiceWs.readyState === WebSocket.OPEN) {
+      // Chrome sometimes ends before isFinal is true. Send what we have!
+      addMessage('user', currentInterim.trim());
+      voiceWs.send(JSON.stringify({type: 'user', text: currentInterim.trim()}));
+      setTyping(true);
+      document.getElementById('status-label').textContent = 'Aria is thinking...';
+    }
+    currentInterim = '';
+    document.getElementById('interim-text').textContent = 'Tap mic to respond';
+    document.getElementById('interim-text').classList.remove('active');
+    stopListening();
+  };
+}
+
+function toggleMic() {
+  if (!callActive) return;
+  if (isListening) {
+    stopListening();
+  } else {
+    startListening();
+  }
+}
+
+function startListening() {
+  if (!recognition) setupRecognition();
+  if (!recognition) return;
+  window.speechSynthesis.cancel();
+  isListening = true;
+  document.getElementById('btn-mic').classList.add('listening');
+  document.getElementById('btn-mic').textContent = '🔴';
+  setAvatarState('listening');
+  document.getElementById('status-label').textContent = 'Listening...';
+  document.getElementById('interim-text').textContent = 'Speak now...';
+  recognition.start();
+}
+
+function stopListening() {
+  isListening = false;
+  document.getElementById('btn-mic').classList.remove('listening');
+  document.getElementById('btn-mic').textContent = '🎙️';
+  setAvatarState('');
+  if (recognition) {
+    try { recognition.stop(); } catch(e) {}
+  }
+}
+
+function handleKeyPress(e) {
+  if (e.key === 'Enter') sendText();
+}
+
+function sendText() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || !callActive || !voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
+  
+  input.value = '';
+  addMessage('user', text);
+  voiceWs.send(JSON.stringify({type: 'user', text: text}));
+  setTyping(true);
+  document.getElementById('status-label').textContent = 'Aria is thinking...';
+  
+  // Stop speaking and listening if active
+  window.speechSynthesis.cancel();
+  stopListening();
+}
+
+// ── INSIGHTS ──────────────────────────────────────────────────────────────────
+function addTranscriptItem(speaker, text) {
+  const list = document.getElementById('transcript-list');
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const item = document.createElement('div');
+  item.className = 'transcript-item ' + speaker;
+
+  const spLabel = document.createElement('div');
+  spLabel.className = 'transcript-speaker';
+  spLabel.textContent = speaker === 'AGENT' ? '🤖 Aria' : '🧑 Customer';
+
+  const textDiv = document.createElement('div');
+  textDiv.className = 'transcript-text';
+  textDiv.textContent = text;
+
+  item.appendChild(spLabel);
+  item.appendChild(textDiv);
+  list.appendChild(item);
+  list.scrollTop = list.scrollHeight;
+
+  uttCount++;
+  document.getElementById('utt-count').textContent = uttCount + ' utterances';
+}
+
+function addNudge(nudge) {
+  const list = document.getElementById('nudge-list');
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const card = document.createElement('div');
+  card.className = 'nudge-card ' + nudge.priority;
+
+  const typeMap = {
+    missed_cross_sell: 'Cross-Sell Opportunity',
+    compliance_gap: 'Compliance Gap',
+    rising_frustration: 'Rising Frustration',
+    payment_difficulty: 'Payment Difficulty',
+    out_of_scope: 'Out of Scope',
+    buying_signal: 'Buying Signal',
+  };
+
+  const confPct = Math.round((nudge.confidence || 0) * 100);
+  if (nudge.priority === 'high') highCount++;
+
+  card.innerHTML = `
+    <div class="nudge-header">
+      <span class="nudge-type">${typeMap[nudge.signal_type] || nudge.signal_type}</span>
+      <span class="nudge-priority">${nudge.priority}</span>
+    </div>
+    <div class="nudge-text">${nudge.nudge_text || 'Take action now'}</div>
+    ${nudge.evidence ? `<div class="nudge-evidence">"${nudge.evidence}"</div>` : ''}
+    <div class="nudge-confidence">
+      <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%"></div></div>
+      <span class="conf-label">${confPct}%</span>
+    </div>
+  `;
+
+  // Insert at top
+  list.insertBefore(card, list.firstChild);
+
+  nudgeCount++;
+  document.getElementById('nudge-count').textContent = nudgeCount + ' nudges';
+  document.getElementById('stat-nudges').textContent = nudgeCount;
+  document.getElementById('stat-high').textContent = highCount;
+
+  // Update tab badge
+  document.getElementById('tab-insights').textContent = `⚡ Live Insights (${nudgeCount})`;
+
+  if (nudge.e2e_ms) {
+    e2eValues.push(nudge.e2e_ms);
+    e2eValues.sort((a,b)=>a-b);
+    const p50 = e2eValues[Math.floor(e2eValues.length * 0.5)];
+    const p95 = e2eValues[Math.floor(e2eValues.length * 0.95)];
+    document.getElementById('stat-p50').textContent = p50 + 'ms';
+    document.getElementById('stat-p95').textContent = p95 + 'ms';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+setupRecognition();
+connectDashboard();
+
+// Preload voices (Chrome requires this)
+window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+window.speechSynthesis.getVoices();
+</script>
+
+</body>
+</html>
